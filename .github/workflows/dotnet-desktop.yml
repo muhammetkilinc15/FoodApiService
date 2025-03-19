@@ -9,39 +9,49 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Kodu GitHub repository'sinden çek
       - name: 🚀 Checkout Code
         uses: actions/checkout@v3
 
+      # DigitalOcean API Token'ı ayarla
       - name: 🔐 Set up DigitalOcean API Token
         env:
           DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
-        run: |
-          echo $DO_API_TOKEN > do_api_token.txt
+        run: echo "API token set"
 
+      # Gerekli bağımlılıkları yükle
       - name: 📦 Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y jq curl
 
+      # Droplet ID'sini al
       - name: 🔄 Get Droplet ID
         id: droplet
+        env:
+          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
         run: |
           DROPLET_ID=$(curl -X GET "https://api.digitalocean.com/v2/droplets?name=YOUR_DROPLET_NAME" \
             -H "Authorization: Bearer $DO_API_TOKEN" \
             | jq -r '.droplets[0].id')
           echo "DROPLET_ID=$DROPLET_ID" >> $GITHUB_ENV
 
+      # Docker konteynerlerini dağıt
       - name: 🐳 Deploy Docker Containers
+        env:
+          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
+          DROPLET_ID: ${{ steps.droplet.outputs.DROPLET_ID }}
         run: |
+          # Droplet'i yeniden başlat
           curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
             -H "Authorization: Bearer $DO_API_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"type":"power_cycle"}'
 
-          # Wait for the droplet to power cycle
+          # Droplet'in yeniden başlatılmasını bekle
           sleep 60
 
-          # Execute commands on the Droplet
+          # Droplet üzerinde komutları çalıştır
           SCRIPT=$(cat <<'EOF'
             cd /home/user/myapp
             git pull origin master
