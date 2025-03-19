@@ -1,0 +1,50 @@
+name: Deploy to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main  # Main branch'e her push olduğunda çalışır
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚀 Kodu Checkout Et
+        uses: actions/checkout@v3
+
+      - name: 🔑 SSH Key’yi Güvenli Şekilde Yükle
+        run: |
+          eval "$(ssh-agent -s)"
+          echo "${{ secrets.DOCKER_SSH_KEY }}" | tr -d '\r' | ssh-add - > /dev/null
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DIGITALOCEAN_IP }} > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: 🐳 Sadece Değişen Container'ı Güvenli Güncelle
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.DIGITALOCEAN_USER }}@${{ secrets.DIGITALOCEAN_IP }} << 'EOF'
+            set -e  # Hata yakalama aktif olsun
+
+            cd /home/user/myapp  # Proje dizinine git
+            git pull origin main  # Yeni değişiklikleri çek
+
+            # Mevcut çalışan servisleri listele
+            RUNNING_SERVICES=$(docker compose ps --services)
+
+            # Yeni image’leri çek ve değişen servisleri belirle
+            docker compose pull > /tmp/docker_pull.log 2>&1
+            CHANGED_SERVICES=$(grep "Downloaded newer image" /tmp/docker_pull.log | awk '{print $1}' | sort | uniq)
+
+            # Değişen servisleri sadece çalışıyorsa güncelle
+            for SERVICE in $CHANGED_SERVICES; do
+              if echo "$RUNNING_SERVICES" | grep -q "^$SERVICE$"; then
+                echo "📌 $SERVICE güncelleniyor..."
+                docker compose up --build -d $SERVICE
+              else
+                echo "⚠️ $SERVICE çalışmıyor, güncellenmeyecek."
+              fi
+            done
+
+            # Eski image’leri temizle
+            docker image prune -f
+          EOF
