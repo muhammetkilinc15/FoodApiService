@@ -12,39 +12,46 @@ jobs:
       - name: 🚀 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🔑 Load SSH Key Securely
+      - name: 🔐 Set up DigitalOcean API Token
+        env:
+          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
         run: |
-          eval "$(ssh-agent -s)"
-          echo "${{ secrets.DOCKER_SSH_KEY }}" | tr -d '\r' | ssh-add -
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DIGITALOCEAN_IP }} >> ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
+          echo $DO_API_TOKEN > do_api_token.txt
 
-      - name: 🐳 Securely Update Only Changed Containers
+      - name: 📦 Install Dependencies
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.DIGITALOCEAN_USER }}@${{ secrets.DIGITALOCEAN_IP }} << 'EOF'
-            set -e  # Enable error catching
+          sudo apt-get update
+          sudo apt-get install -y jq curl
 
-            cd /home/user/myapp  # Go to project directory
-            git pull origin master  # Pull the latest changes
+      - name: 🔄 Get Droplet ID
+        id: droplet
+        run: |
+          DROPLET_ID=$(curl -X GET "https://api.digitalocean.com/v2/droplets?name=YOUR_DROPLET_NAME" \
+            -H "Authorization: Bearer $DO_API_TOKEN" \
+            | jq -r '.droplets[0].id')
+          echo "DROPLET_ID=$DROPLET_ID" >> $GITHUB_ENV
 
-            # List currently running services
-            RUNNING_SERVICES=$(docker compose ps --services)
+      - name: 🐳 Deploy Docker Containers
+        run: |
+          curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
+            -H "Authorization: Bearer $DO_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"power_cycle"}'
 
-            # Pull the new images and determine changed services
-            docker compose pull > /tmp/docker_pull.log 2>&1
-            CHANGED_SERVICES=$(grep "Downloaded newer image" /tmp/docker_pull.log | awk '{print $1}' | sort | uniq)
+          # Wait for the droplet to power cycle
+          sleep 60
 
-            # Update only the changed services if they are running
-            for SERVICE in $CHANGED_SERVICES; do
-              if echo "$RUNNING_SERVICES" | grep -q "^$SERVICE$"; then
-                echo "📌 Updating $SERVICE..."
-                docker compose up --build -d $SERVICE
-              else
-                echo "⚠️ $SERVICE is not running, will not update."
-              fi
-            done
-
-            # Clean up old images
+          # Execute commands on the Droplet
+          SCRIPT=$(cat <<'EOF'
+            cd /home/user/myapp
+            git pull origin master
+            docker compose pull
+            docker compose up --build -d
             docker image prune -f
-          EOF
+EOF
+          )
+
+          curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
+            -H "Authorization: Bearer $DO_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"type\":\"execute\",\"command\":\"$(echo $SCRIPT | base64)\"}"
