@@ -3,7 +3,7 @@ name: Deploy to DigitalOcean
 on:
   push:
     branches:
-      - main  # Main branch'e her push olduğunda çalışır
+      - master  # master branch'e her push olduğunda çalışır
 
 jobs:
   deploy:
