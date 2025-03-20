@@ -1,67 +1,22 @@
-name: Deploy to DigitalOcean
+name: Publish Backend  # Workflow’un adı
 
 on:
   push:
     branches:
-      - master
+      - master  # Sadece "master" branch'ine push yapıldığında çalıştırır.
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  release:
+    concurrency:
+      group: ${{ github.ref }}  # Aynı anda çalışan işlerin çakışmasını önler.
+    runs-on: ubuntu-latest  # İş akışı Ubuntu üzerinde çalışacak.
+
     steps:
-      # Kodu GitHub repository'sinden çek
-      - name: 🚀 Checkout Code
-        uses: actions/checkout@v3
-
-      # DigitalOcean API Token'ı ayarla
-      - name: 🔐 Set up DigitalOcean API Token
-        env:
-          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
-        run: echo "API token set"
-
-      # Gerekli bağımlılıkları yükle
-      - name: 📦 Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl
-
-      # Droplet ID'sini al
-      - name: 🔄 Get Droplet ID
-        id: droplet
-        env:
-          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
-        run: |
-          DROPLET_ID=$(curl -X GET "https://api.digitalocean.com/v2/droplets?name=YOUR_DROPLET_NAME" \
-            -H "Authorization: Bearer $DO_API_TOKEN" \
-            | jq -r '.droplets[0].id')
-          echo "DROPLET_ID=$DROPLET_ID" >> $GITHUB_ENV
-
-      # Docker konteynerlerini dağıt
-      - name: 🐳 Deploy Docker Containers
-        env:
-          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
-          DROPLET_ID: ${{ steps.droplet.outputs.DROPLET_ID }}
-        run: |
-          # Droplet'i yeniden başlat
-          curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
-            -H "Authorization: Bearer $DO_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"type":"power_cycle"}'
-
-          # Droplet'in yeniden başlatılmasını bekle
-          sleep 60
-
-          # Droplet üzerinde komutları çalıştır
-          SCRIPT=$(cat <<'EOF'
-            cd /home/user/myapp
-            git pull origin master
-            docker compose pull
-            docker compose up --build -d
-            docker image prune -f
-EOF
-          )
-
-          curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
-            -H "Authorization: Bearer $DO_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"type\":\"execute\",\"command\":\"$(echo $SCRIPT | base64)\"}"
+      - name: executing remote ssh commands using password
+        uses: appleboy/ssh-action@master  # SSH ile uzak sunucuya bağlanır.
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}  # Sunucu IP veya domain
+          username: ${{ secrets.PROD_SSH_USERNAME }}  # SSH kullanıcı adı
+          key: ${{ secrets.PROD_SSH_KEY }}  # Özel SSH anahtarı
+          port: ${{ secrets.PROD_SSH_PORT }}  # SSH bağlantı portu
+          script: cd /root/.ssh/ && git checkout prod  && git pull && bash start...
