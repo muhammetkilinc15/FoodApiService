@@ -19,4 +19,8 @@ jobs:
           username: ${{ secrets.PROD_SSH_USERNAME }}  # SSH kullanıcı adı
           key: ${{ secrets.PROD_SSH_KEY }}  # Özel SSH anahtarı
           port: ${{ secrets.PROD_SSH_PORT }}  # SSH bağlantı portu
-          script: cd /root/.ssh/ && git checkout prod  && git pull && bash start...
+          script: |
+            cd /path/to/your/project/directory  # Proje dizinine git
+            git checkout prod  # prod branch'ine geç
+            git pull  # Son güncellemeleri al
+            bash start.sh  # start.sh scriptini çalıştır
