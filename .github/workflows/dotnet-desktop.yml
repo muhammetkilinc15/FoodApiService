@@ -1,57 +1,22 @@
-name: Deploy to DigitalOcean
+name: Publish Backend  # Workflow’un adı
 
 on:
   push:
     branches:
-      - master
+      - master  # Sadece "master" branch'ine push yapıldığında çalıştırır.
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  release:
+    concurrency:
+      group: ${{ github.ref }}  # Aynı anda çalışan işlerin çakışmasını önler.
+    runs-on: ubuntu-latest  # İş akışı Ubuntu üzerinde çalışacak.
+
     steps:
-      - name: 🚀 Checkout Code
-        uses: actions/checkout@v3
-
-      - name: 🔐 Set up DigitalOcean API Token
-        env:
-          DO_API_TOKEN: ${{ secrets.DIGITALOCEAN_API_TOKEN }}
-        run: |
-          echo $DO_API_TOKEN > do_api_token.txt
-
-      - name: 📦 Install Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl
-
-      - name: 🔄 Get Droplet ID
-        id: droplet
-        run: |
-          DROPLET_ID=$(curl -X GET "https://api.digitalocean.com/v2/droplets?name=YOUR_DROPLET_NAME" \
-            -H "Authorization: Bearer $DO_API_TOKEN" \
-            | jq -r '.droplets[0].id')
-          echo "DROPLET_ID=$DROPLET_ID" >> $GITHUB_ENV
-
-      - name: 🐳 Deploy Docker Containers
-        run: |
-          curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
-            -H "Authorization: Bearer $DO_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"type":"power_cycle"}'
-
-          # Wait for the droplet to power cycle
-          sleep 60
-
-          # Execute commands on the Droplet
-          SCRIPT=$(cat <<'EOF'
-            cd /home/user/myapp
-            git pull origin master
-            docker compose pull
-            docker compose up --build -d
-            docker image prune -f
-EOF
-          )
-
-          curl -X POST "https://api.digitalocean.com/v2/droplets/$DROPLET_ID/actions" \
-            -H "Authorization: Bearer $DO_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"type\":\"execute\",\"command\":\"$(echo $SCRIPT | base64)\"}"
+      - name: executing remote ssh commands using password
+        uses: appleboy/ssh-action@master  # SSH ile uzak sunucuya bağlanır.
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}  # Sunucu IP veya domain
+          username: ${{ secrets.PROD_SSH_USERNAME }}  # SSH kullanıcı adı
+          key: ${{ secrets.PROD_SSH_KEY }}  # Özel SSH anahtarı
+          port: ${{ secrets.PROD_SSH_PORT }}  # SSH bağlantı portu
+          script: cd /root/.ssh/ && git checkout prod  && git pull && bash start...
