@@ -28,6 +28,8 @@ namespace FoodApiService.Controllers
         {
             var query = dbContext.Foods.AsQueryable().AsNoTracking();
 
+            
+
             if (!string.IsNullOrEmpty(request.Search))
             {
                 query = query.Where(f => f.Name.Contains(request.Search));

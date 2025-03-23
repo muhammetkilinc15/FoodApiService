@@ -18,12 +18,7 @@ namespace FoodApiService.Service.Concreate
             _logger = logger;
         }
 
-        /// <summary>
-        /// Tek bir dosya kaydetme işlemi.
-        /// </summary>
-        /// <param name="file">Kaydedilecek dosya.</param>
-        /// <param name="folderName">Dosyanın kaydedileceği klasör ismi.</param>
-        /// <returns>Dosya yolunu döner.</returns>
+
         public async Task<string> SaveFileAsync(IFormFile file, string folderName)
         {
             try
@@ -54,12 +49,6 @@ namespace FoodApiService.Service.Concreate
             }
         }
 
-        /// <summary>
-        /// Birden fazla dosya kaydetme işlemi (Asenkron).
-        /// </summary>
-        /// <param name="files">Kaydedilecek dosyaların koleksiyonu.</param>
-        /// <param name="folderName">Dosyaların kaydedileceği klasör ismi.</param>
-        /// <returns>Kaydedilen dosyaların yollarını döner.</returns>
         public async Task<List<string>> SaveFileAsync(IFormFileCollection files, string folderName)
         {
             var filePaths = new List<string>();
@@ -90,13 +79,6 @@ namespace FoodApiService.Service.Concreate
                 throw;
             }
         }
-
-        /// <summary>
-        /// Dosya silme işlemi.
-        /// </summary>
-        /// <param name="fileName">Silinecek dosyanın ismi.</param>
-        /// <param name="folderName">Dosyanın bulunduğu klasör ismi.</param>
-        /// <returns>Silme işlemi başarılıysa true, başarısızsa false döner.</returns>
         public Task<bool> DeleteFileAsync(string fileName, string folderName)
         {
             try
