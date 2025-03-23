@@ -59,6 +59,12 @@ namespace FoodApiService.Controllers
             return Ok(foods);
 
         }
+        [HttpGet("test")]
+        public async Task<IActionResult> GetTest()
+        {
+            return Ok("Mehmet murati götten sitiyor");
+
+        }
 
 
 
