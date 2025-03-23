@@ -2,7 +2,6 @@
 using FoodApiService.DTOs;
 using FoodApiService.Entities;
 using FoodApiService.Service.Abstractions;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 

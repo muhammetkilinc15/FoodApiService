@@ -1,5 +1,3 @@
-using FluentValidation;
-using FluentValidation.AspNetCore;
 using FoodApiService.Context;
 using FoodApiService.Service.Abstractions;
 using FoodApiService.Service.Concreate;
