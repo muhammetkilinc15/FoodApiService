@@ -8,7 +8,6 @@ Bu proje, yemek rezervasyon sistemi için oluşturulmuş bir API servisidir. Mik
 - PostgreSQL veritabanı entegrasyonu
 - Docker ile container oluşturma
 - CI/CD entegrasyonu (GitHub Actions kullanılarak)
-- Unit ve entegrasyon testleri
 
 ## Gereksinimler
 
