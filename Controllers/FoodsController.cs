@@ -134,7 +134,7 @@ namespace FoodApiService.Controllers
             return NoContent();
         }
 
-
+        // delete islemi
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFood([FromRoute] int id)
         {
